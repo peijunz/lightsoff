@@ -4,24 +4,17 @@ def GCD(a, b):
     m = np.array([1, 0])
     n = np.array([0, 1])
     while b:
-        p, q = divmod(a, b)
+        p, r = divmod(a, b)
         m, n = n, m-p*n
-        a, b = b, q
+        a, b = b, r
     return a, m
 
 def divmodr(b, m, n=None):
     if n is None:
         return divmod(b, m)
     k, (c, d) = GCD(m, n)
-    p, q = divmod(b, k)
-    return (p*c) % n, q
-
-def divr(b, m, n=None):
-    p, q = divmodr(b, m, n)
-    if q:
-        raise ZeroDivisionError("Unsolvable congrunce division")
-    return p
-
+    p, r = divmod(b, k)
+    return (p*c) % n, r
 
 class RingBase:
     _base = 1
@@ -59,12 +52,24 @@ class RingBase:
 
     def __truediv__(self, rhs):
         rhs = self.__class__(rhs)
-        p = divr(self.val, rhs.val, self._base)
+        p, r = divmodr(self.val, rhs.val, self._base)
+        if r:
+            raise ZeroDivisionError("Unsolvable congrunce division")
         return self.__class__(p)
+
+    def __mod__(self, rhs):
+        rhs = self.__class__(rhs)
+        p, r = divmodr(self.val, rhs.val, self._base)
+        return self.__class__(r)
 
     def __eq__(self, rhs):
         rhs = self.__class__(rhs)
         return rhs.val == self.val
+
+    def inv(self):
+        p, r = divmodr(1, self.val, self._base)
+        if r == 0:
+            return self.__class__(p)
 
 
 def Ring(base, verbose=True):
@@ -73,31 +78,49 @@ def Ring(base, verbose=True):
         _verbose = verbose
     return _R
 
+@profile
 def linear_solver(m, im):
     n = m.shape[0]
     im = im.reshape(n, -1)
     M = np.empty([n, n+im.shape[1]], dtype='object')
     M[:, :n] = m
     M[:, n:] = im
-    for i in range(n):
-        for j in range(i, n):
-            if M[j, i] != 0:
+    col2row = np.zeros([n], dtype='int')
+    row2col = np.zeros([n], dtype='int')
+    x, y = 0, 0
+    null = []
+    while x < n and y < n:
+        for i in range(x, n):
+            if M[i, y] != 0:
                 break
-        if j != i:
-            M[[i, j]] = M[[j, i]]
-        if M[i, i] == 0:
+        if M[i, y] == 0:
+            null.append(y)
+            row2col[y] = x - y - 1
+            y += 1
             continue
-        M[i] = M[i]/M[i, i]
-        for k in range(j+1, n):
-            M[k] = M[k] - M[i]*M[k, i]
-    l = []
-    for i in range(n-1, -1, -1):
-        if M[i, i] == 0:
-            l.append(i)
-            continue
+        if x != i:
+            M[[i, x]] = M[[x, i]]
+        p = M[x, y].inv()
+        if p is None:
+            M[x, y:] /= M[x, y]
+        else:
+            M[x, y:] *= p
+        for i in range(x+1, n):
+            M[i, y:] -= M[x, y:]*M[i, y]
+        col2row[x] = y
+        row2col[y] = x
+        x += 1
+        y += 1
+    col2row = col2row[:x]
+    #row2col = np.cumsum(row2col) - 1
+    for i in range(x-1, -1, -1):
+        y = col2row[i]
         for j in range(i-1, -1, -1):
-            M[j, n:] = M[j, n:] - M[i, n:]*M[j, i]
-    return M[:, n:], l
+            M[j, n:] = M[j, n:] - M[i, n:]*M[j, y]
+            # Unnecessary operation
+            # M[j, y:n] = M[j, y:n] - M[i, y:n]*M[j, y]
+    M[list(range(n))] = M[row2col]
+    return M[:, n:], null
 
 
 def invr(m):
@@ -143,6 +166,10 @@ def apply_sol(sol, s):
         return None
     return np.einsum('ij, j->i', M, s).reshape(5, 5)
 
+def test_elimination():
+    a = np.array([[1, 1, 1, 1], [0, 0, 1, 1], [0, 0, 3, 3], [0, 0, 2, 2]], dtype='int')
+    m, n = invr(a)
+    print(m, n)
 
 def test_first_row():
     import itertools as it
@@ -163,11 +190,13 @@ def interactive_solver():
 
     parser = argparse.ArgumentParser(description='Turn off all the lights')
     parser.add_argument('s', metavar='Puzzle', type=str, nargs=1,
-                    help='a question to solve for the accumulator')
+                    help='a puzzle to solve for the accumulator')
     args = parser.parse_args()
     m = str2mat(args.s[0])
     solver = lightsoff_solver(*m.shape)
     print(apply_sol(solver, m))
 
 if __name__ == "__main__":
+    test_first_row()
+    #test_elimination()
     interactive_solver()
