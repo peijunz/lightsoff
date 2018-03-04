@@ -144,7 +144,7 @@ def apply_sol(sol, s):
     return np.einsum('ij, j->i', M, s).reshape(5, 5)
 
 
-if __name__ == "__main__":
+def test_first_row():
     import itertools as it
     solver = lightsoff_solver(5, 5)
     lights = np.zeros([25], dtype='int')
@@ -156,3 +156,18 @@ if __name__ == "__main__":
             print('-'*30)
             print(lights.reshape(5, 5))
             print(sol)
+    return solver
+
+def interactive_solver():
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Turn off all the lights')
+    parser.add_argument('s', metavar='Puzzle', type=str, nargs=1,
+                    help='a question to solve for the accumulator')
+    args = parser.parse_args()
+    m = str2mat(args.s[0])
+    solver = lightsoff_solver(*m.shape)
+    print(apply_sol(solver, m))
+
+if __name__ == "__main__":
+    interactive_solver()
