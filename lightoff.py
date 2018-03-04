@@ -7,12 +7,12 @@ def GCD(a, b):
         p, q = divmod(a, b)
         m, n = n, m-p*n
         a, b = b, q
-    return a, m[0]
+    return a, m
 
 def divmodr(b, m, n=None):
     if n is None:
         return divmod(b, m)
-    k, c = GCD(m, n)
+    k, (c, d) = GCD(m, n)
     p, q = divmod(b, k)
     return (p*c) % n, q
 
@@ -73,7 +73,6 @@ def Ring(base, verbose=True):
         _verbose = verbose
     return _R
 
-@profile
 def linear_solver(m, im):
     n = m.shape[0]
     im = im.reshape(n, -1)
@@ -97,7 +96,7 @@ def linear_solver(m, im):
             l.append(i)
             continue
         for j in range(i-1, -1, -1):
-            M[j] = M[j] - M[i]*M[j, i]
+            M[j, n:] = M[j, n:] - M[i, n:]*M[j, i]
     return M[:, n:], l
 
 
@@ -135,21 +134,25 @@ def lightsoff_solver(m, n):
 
 
 def apply_sol(sol, s):
-    s = A2(str2mat(s).flatten())
+    if isinstance(s, str):
+        s = str2mat(s)
+    s = A2(s.flatten())
     M, l = sol
     criteria = np.einsum('ij, j->i', M[l], s)
     if not all(criteria == 0):
         return None
-    return np.einsum('ij, j->i', M, s).reshape(5, 5).astype('int')
+    return np.einsum('ij, j->i', M, s).reshape(5, 5)
 
 
 if __name__ == "__main__":
+    import itertools as it
     solver = lightsoff_solver(5, 5)
-    q = '''
-        11100
-        00000
-        00000
-        00000
-        00000
-        '''
-    print(apply_sol(solver, q))
+    lights = np.zeros([25], dtype='int')
+    row1 = ((0, 1),)*5
+    for elem in it.product(*row1):
+        lights[:5] = elem
+        sol = apply_sol(solver, lights)
+        if sol is not None:
+            print('-'*30)
+            print(lights.reshape(5, 5))
+            print(sol)
