@@ -42,13 +42,25 @@ class RingBase:
         rhs = self.__class__(rhs)
         return self.__class__(self.val+rhs.val)
 
+    def __radd__(self, lhs):
+        lhs = self.__class__(lhs)
+        return self.__class__(self.val+lhs.val)
+
     def __sub__(self, rhs):
         rhs = self.__class__(rhs)
         return self.__class__(self.val-rhs.val)
 
+    def __rsub__(self, lhs):
+        lhs = self.__class__(lhs)
+        return self.__class__(lhs.val-self.val)
+
     def __mul__(self, rhs):
         rhs = self.__class__(rhs)
         return self.__class__(self.val*rhs.val)
+
+    def __rmul__(self, lhs):
+        lhs = self.__class__(lhs)
+        return self.__class__(self.val*lhs.val)
 
     def __truediv__(self, rhs):
         rhs = self.__class__(rhs)
@@ -57,19 +69,33 @@ class RingBase:
             raise ZeroDivisionError("Unsolvable congrunce division")
         return self.__class__(p)
 
+    def __rtruediv__(self, lhs):
+        lhs = self.__class__(lhs)
+        return lhs/self
+
+    def __floordiv__(self, rhs):
+        rhs = self.__class__(rhs)
+        p, r = divmodr(self.val, rhs.val, self._base)
+        return self.__class__(p)
+
+    def __rfloordiv__(self, lhs):
+        lhs = self.__class__(lhs)
+        p, r = divmodr(lhs.val, self.val, self._base)
+        return self.__class__(p)
+
     def __mod__(self, rhs):
         rhs = self.__class__(rhs)
         p, r = divmodr(self.val, rhs.val, self._base)
         return self.__class__(r)
 
+    def __rmod__(self, lhs):
+        lhs = self.__class__(lhs)
+        p, r = divmodr(lhs.val, self.val, self._base)
+        return self.__class__(r)
+
     def __eq__(self, rhs):
         rhs = self.__class__(rhs)
         return rhs.val == self.val
-
-    def inv(self):
-        p, r = divmodr(1, self.val, self._base)
-        if r == 0:
-            return self.__class__(p)
 
 
 def Ring(base, verbose=True):
@@ -82,41 +108,41 @@ def Ring(base, verbose=True):
 def linear_solver(m, im):
     n = m.shape[0]
     im = im.reshape(n, -1)
-    M = np.empty([n, n+im.shape[1]], dtype='object')
+    M = np.empty([n, n+im.shape[1]], dtype=m.dtype)
     M[:, :n] = m
     M[:, n:] = im
     col2row = np.zeros([n], dtype='int')
     row2col = np.zeros([n], dtype='int')
     x, y = 0, 0
     null = []
-    while x < n and y < n:
+    for y in range(n):
         for i in range(x, n):
             if M[i, y] != 0:
                 break
         if M[i, y] == 0:
             null.append(y)
             row2col[y] = x - y - 1
-            y += 1
             continue
         if x != i:
             M[[i, x]] = M[[x, i]]
-        p = M[x, y].inv()
+
+        p = 1/M[x, y]
         if p is None:
             M[x, y:] /= M[x, y]
         else:
             M[x, y:] *= p
+
         for i in range(x+1, n):
             M[i, y:] -= M[x, y:]*M[i, y]
+
         col2row[x] = y
         row2col[y] = x
         x += 1
-        y += 1
     col2row = col2row[:x]
-    #row2col = np.cumsum(row2col) - 1
     for i in range(x-1, -1, -1):
         y = col2row[i]
         for j in range(i-1, -1, -1):
-            M[j, n:] = M[j, n:] - M[i, n:]*M[j, y]
+            M[j, n:] -= M[i, n:]*M[j, y]
             # Unnecessary operation
             # M[j, y:n] = M[j, y:n] - M[i, y:n]*M[j, y]
     M[list(range(n))] = M[row2col]
@@ -167,7 +193,9 @@ def apply_sol(sol, s):
     return np.einsum('ij, j->i', M, s).reshape(5, 5)
 
 def test_elimination():
-    a = np.array([[1, 1, 1, 1], [0, 0, 1, 1], [0, 0, 3, 3], [0, 0, 2, 2]], dtype='int')
+    from fractions import Fraction
+    a = np.array([[1, 1, 1, 1], [0, 0, 1, 1], [0, 0, 3, 7], [0, 0, 2, 2]], dtype='double')
+    a = np.vectorize(Fraction)(a)
     m, n = invr(a)
     print(m, n)
 
@@ -197,6 +225,6 @@ def interactive_solver():
     print(apply_sol(solver, m))
 
 if __name__ == "__main__":
-    test_first_row()
-    #test_elimination()
-    interactive_solver()
+    #test_first_row()
+    test_elimination()
+    #interactive_solver()
