@@ -169,13 +169,13 @@ def gmatrix(m, n):
                     mat[ri, ri2] = 1
     return A2(mat)
 
-
+import re
 def str2mat(s):
     rows = s.strip().split('\n')
-    return np.array([list(r.strip()) for r in rows], dtype='int')
+    return np.array([list(re.sub("\s","",r)) for r in rows], dtype='int')
 
 
-def lightsoff_solver(m, n):
+def lightoff_solver(m, n):
     g = gmatrix(m, n)
     return invr(g)
 
@@ -200,7 +200,7 @@ def test_elimination():
     print(m)
 
 def test_first_row():
-    solver = lightsoff_solver(5, 5)
+    solver = lightoff_solver(5, 5)
     lights = np.zeros([5, 5], dtype='int')
     row1 = ((0, 1),)*5
     num = 0
@@ -223,8 +223,19 @@ def interactive_solver():
                     help='a puzzle to solve for the accumulator')
     args = parser.parse_args()
     m = str2mat(args.s[0])
-    solver = lightsoff_solver(*m.shape)
+    solver = lightoff_solver(*m.shape)
     print(apply_sol(solver, m))
+
+def single_solve(s):
+    m = str2mat(s)
+    g = gmatrix(*m.shape)
+    n, v = linear_solver(g, A2(m.flatten()))
+    if all(v[n]==0):
+        print(v.reshape(m.shape))
+        return str(v.reshape(m.shape)).replace('[', ' ').replace(']', ' ')
+    else:
+        return "None"
+
 
 if __name__ == "__main__":
     interactive_solver()
