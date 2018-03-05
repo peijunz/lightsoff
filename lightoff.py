@@ -183,12 +183,13 @@ def lightsoff_solver(m, n):
 def apply_sol(sol, s):
     if isinstance(s, str):
         s = str2mat(s)
+    sh = s.shape
     s = A2(s.flatten())
     nul, M = sol
     criteria = np.einsum('ij, j->i', M[nul], s)
     if not all(criteria == 0):
         return None
-    return np.einsum('ij, j->i', M, s).reshape(5, 5)
+    return np.einsum('ij, j->i', M, s).reshape(sh)
 
 def test_elimination():
     from fractions import Fraction
@@ -200,16 +201,16 @@ def test_elimination():
 
 def test_first_row():
     solver = lightsoff_solver(5, 5)
-    lights = np.zeros([25], dtype='int')
+    lights = np.zeros([5, 5], dtype='int')
     row1 = ((0, 1),)*5
     num = 0
     for elem in it.product(*row1):
-        lights[:5] = elem
+        lights[0] = elem
         sol = apply_sol(solver, lights)
         if sol is not None:
             num += 1
             print('-'*30)
-            print(lights.reshape(5, 5))
+            print(lights)
             print(sol)
     assert num == 8, "Wrong number of solutions"
     return solver
