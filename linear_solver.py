@@ -2,29 +2,11 @@
 import numpy as np
 import itertools as it
 
-
-def linear_solver(A, b):
-    '''Solve linear equations Ax=b with Gaussian elimination
-    Args:
-        A   Transformation matrix
-        b   Inhomogenous term
-    Return:
-        ortho   The index that is not linearly independent
-        solution
-        kernel  The orthogonal complementary space of A
-
-    Ref:
-        https://en.wikipedia.org/wiki/Orthogonal_complement
-        https://en.wikipedia.org/wiki/Kernel_(linear_algebra)
-    '''
-    n = A.shape[0]
-    b = b.reshape(n, -1)
-    type_ = A[0, 0].__class__
-    M = np.empty([n, n+b.shape[1]], dtype=type_)
-    M[:, :n] = A
-    M[:, n:] = b
+def triangulate(M):
     ortho = []
     space = []
+    n = M.shape[0]
+    type_ = M[0, 0].__class__
     for x in range(n):
         for i in it.chain(range(x, n), ortho):
             if M[i, x] != 0:
@@ -45,11 +27,42 @@ def linear_solver(A, b):
 
         for i in it.chain(range(x+1, n), ortho):
             M[i, x:] -= M[x, x:]*M[i, x]
+    return ortho, space
 
-    space.reverse()
+
+def solve_triangular(M, b=None, space=None):
+    if b is not None:
+        M = np.hstack((M, b))
+    n = M.shape[0]
+    if space is None:
+        space = list(reversed(range(M.shape[0])))
     for k, x in enumerate(space):
+        if M[x, x] != 1:
+            M[x, x:] /= M[x, x]
         for i in space[k+1:]:
             M[i, x:] -= M[x, x:]*M[i, x]
+    return M[:, :n], M[:, n:]
+
+
+def linear_solver(A, b):
+    '''Solve linear equations Ax=b with Gaussian elimination
+    Args:
+        A   Transformation matrix
+        b   Inhomogenous term
+    Return:
+        ortho   The index that is not linearly independent
+        solution
+        kernel  The orthogonal complementary space of A
+
+    Ref:
+        https://en.wikipedia.org/wiki/Orthogonal_complement
+        https://en.wikipedia.org/wiki/Kernel_(linear_algebra)
+    '''
+    n = A.shape[0]
+    M = np.hstack((A, b))
+    ortho, space = triangulate(M)
+    space.reverse()
+    solve_triangular(M, space)
     return ortho, M[:, n:], M[:, ortho]
 
 
