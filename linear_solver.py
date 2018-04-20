@@ -1,6 +1,10 @@
 '''Gaussian elimination method to solve linear equation or invert matrix'''
 import numpy as np
 import itertools as it
+from fractions import Fraction
+
+Fraction.__repr__ = Fraction.__str__
+fractize = np.vectorize(Fraction)
 
 def triangulate(M):
     ortho = []
@@ -59,10 +63,10 @@ def linear_solver(A, b):
         https://en.wikipedia.org/wiki/Kernel_(linear_algebra)
     '''
     n = A.shape[0]
-    M = np.hstack((A, b))
+    M = np.hstack((A, b.reshape(n, -1)))
     ortho, space = triangulate(M)
     space.reverse()
-    solve_triangular(M, space)
+    solve_triangular(M, space=space)
     return ortho, M[:, n:], M[:, ortho]
 
 
@@ -89,10 +93,11 @@ def invr(m):
 
 
 def test_elimination():
-    from fractions import Fraction
-    a = np.array([[1, 1, 1, 1], [0, 0, 1, 1], [0, 0, 3, 3],
+    a = np.array([[1, 1, 1, 1],
+                  [0, 0, 1, 1],
+                  [0, 0, 3, 3],
                   [0, 0, 2, 2]], dtype='double')
-    a = np.vectorize(Fraction)(a)
+    a = fractize(a)
     ortho, sol, ker = invr(a)
     print("Null space", ortho)
     print("Solution", sol, sep='\n')
