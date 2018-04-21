@@ -1,11 +1,10 @@
 import numpy as np
 import itertools as it
-from ring import Ring
-from linear_solver import linear_solver, invr, apply_sol
+from zpj.math import ring, linear_solver as lsol
 import re
 
 
-R2 = Ring(2, verbose=False)
+R2 = ring.Ring(2, verbose=False)
 A2 = np.vectorize(R2)
 
 
@@ -28,7 +27,7 @@ def str2mat(s):
 
 
 def lightoff_solver(m, n):
-    return invr(gmatrix(m, n))
+    return lsol.invr(gmatrix(m, n))
 
 
 def light_sol(sol, s):
@@ -36,8 +35,9 @@ def light_sol(sol, s):
         s = str2mat(s)
     sh = s.shape
     s = A2(s.flatten())
-    res, _ = apply_sol(sol, s)
-    return res.reshape(sh)
+    res, _ = lsol.apply_sol(sol, s)
+    if res:
+        return res.reshape(sh)
 
 
 def test_first_row():
@@ -72,7 +72,7 @@ def interactive_solver():
 def single_solve(s):
     m = str2mat(s)
     g = gmatrix(*m.shape)
-    n, v, _ = linear_solver(g, A2(m.flatten()))
+    n, v, _ = lsol.linear_solver(g, A2(m.flatten()))
     if all(v[n] == 0):
         print(v.reshape(m.shape))
         return str(v.reshape(m.shape)).replace('[', ' ').replace(']', ' ')
