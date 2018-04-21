@@ -12,7 +12,8 @@ def triangulate(M):
     n = M.shape[0]
     type_ = M[0, 0].__class__
     for x in range(n):
-        for i in it.chain(range(x, n), ortho):
+        rems = list(range(x, n)) + ortho
+        for i in rems:
             if M[i, x] != 0:
                 break
         if M[i, x] == 0:
@@ -29,12 +30,12 @@ def triangulate(M):
         else:
             M[x, x:] *= p
 
-        for i in it.chain(range(x+1, n), ortho):
+        for i in rems[1:]:
             M[i, x:] -= M[x, x:]*M[i, x]
     return ortho, space
 
 
-def solve_triangular(M, b=None, space=None):
+def solve_triangular(M, b=None, space=None, ortho=None):
     if b is not None:
         M = np.hstack((M, b))
     n = M.shape[0]
@@ -44,7 +45,13 @@ def solve_triangular(M, b=None, space=None):
         if M[x, x] != 1:
             M[x, x:] /= M[x, x]
         for i in space[k+1:]:
-            M[i, x:] -= M[x, x:]*M[i, x]
+            # Equivalent to but less operations:
+            # M[i, x:] -= M[x, x:]*M[i, x]
+            cols = [j for j in ortho if j>x]
+            if cols:
+                M[i, cols] -= M[x, cols]*M[i, x]
+            M[i, n:] -= M[x, n:]*M[i, x]
+            M[i, x] = M[0, 0].__class__(0)
     return M[:, :n], M[:, n:]
 
 
@@ -66,7 +73,7 @@ def linear_solver(A, b):
     M = np.hstack((A, b.reshape(n, -1)))
     ortho, space = triangulate(M)
     space.reverse()
-    solve_triangular(M, space=space)
+    solve_triangular(M, space=space, ortho=ortho)
     return ortho, M[:, n:], M[:, ortho]
 
 
