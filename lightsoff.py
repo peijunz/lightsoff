@@ -22,8 +22,8 @@ def gmatrix(m, n):
     return A2(mat)
 
 
-def str2mat(s):
-    rows = s.strip().split('\n')
+def str2mat(s, delimiter):
+    rows = s.strip().split(delimiter)
     return np.array([list(re.sub("\s", "", r)) for r in rows], dtype='int')
 
 
@@ -61,11 +61,12 @@ def test_first_row():
 def interactive_solver():
     import argparse
 
-    parser = argparse.ArgumentParser(description='Turn off all the lights')
-    parser.add_argument('s', metavar='Puzzle', type=str, nargs=1,
-                        help='a puzzle to solve for the accumulator')
+    parser = argparse.ArgumentParser(description='Turn off all the lights! Solve puzzles in https://wiki.gnome.org/Apps/Lightsoff')
+    parser.add_argument("puzzle", metavar='Puzzle', help='a puzzle to solve')
+    parser.add_argument("-d", "--delimiter", help="set delimiter",
+                    default='\n')
     args = parser.parse_args()
-    m = str2mat(args.s[0])
+    m = str2mat(args.puzzle, args.delimiter)
     solver = lightoff_solver(*m.shape)
     print(light_sol(solver, m))
 
