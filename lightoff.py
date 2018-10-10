@@ -1,6 +1,7 @@
 import numpy as np
 import itertools as it
-from zpj.math import ring, linear_solver as lsol
+import ring
+import linear_solver as lsol
 import re
 
 
@@ -36,7 +37,7 @@ def light_sol(sol, s):
     sh = s.shape
     s = A2(s.flatten())
     res, _ = lsol.apply_sol(sol, s)
-    if res:
+    if res is not None:
         return res.reshape(sh)
 
 
