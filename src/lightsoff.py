@@ -3,7 +3,7 @@ import itertools as it
 import ring
 import linear_solver as lsol
 import re
-
+from functools import lru_cache
 
 R2 = ring.Ring(2, verbose=False)
 A2 = np.vectorize(R2)
@@ -26,36 +26,34 @@ def str2mat(s, delimiter):
     rows = s.strip().split(delimiter)
     return np.array([list(re.sub("\s", "", r)) for r in rows], dtype='int')
 
-
+@lru_cache
 def lightoff_solver(m, n):
     return lsol.invr(gmatrix(m, n))
 
 
-def light_sol(sol, s):
-    if isinstance(s, str):
-        s = str2mat(s)
-    sh = s.shape
-    s = A2(s.flatten())
-    res, _ = lsol.apply_sol(sol, s)
+def turnoff_lights(lights):
+    if isinstance(lights, str):
+        lights = str2mat(lights)
+    elif isinstance(lights, list):
+        lights = np.array(lights)        
+    m, n = lights.shape
+    lights = A2(lights.flatten())
+    res, _ = lsol.apply_sol(lightoff_solver(m, n), lights)
     if res is not None:
-        return res.reshape(sh)
+        return res.reshape(m, n)
 
 
 def test_first_row():
-    solver = lightoff_solver(5, 5)
     lights = np.zeros([5, 5], dtype='int')
     row1 = ((0, 1),)*5
     num = 0
     for elem in it.product(*row1):
         lights[0] = elem
-        sol = light_sol(solver, lights)
+        sol = turnoff_lights(lights)
         if sol is not None:
             num += 1
-            print('-'*30)
-            print(lights)
-            print(sol)
+            print(elem)
     assert num == 8, "Wrong number of solutions"
-    return solver
 
 
 def interactive_solver():
@@ -67,20 +65,10 @@ def interactive_solver():
                     default='\n')
     args = parser.parse_args()
     m = str2mat(args.puzzle, args.delimiter)
-    solver = lightoff_solver(*m.shape)
-    print(light_sol(solver, m))
-
-
-def single_solve(s):
-    m = str2mat(s)
-    g = gmatrix(*m.shape)
-    n, v, _ = lsol.linear_solver(g, A2(m.flatten()))
-    if all(v[n] == 0):
-        print(v.reshape(m.shape))
-        return str(v.reshape(m.shape)).replace('[', ' ').replace(']', ' ')
-    else:
-        return "None"
+    print(m)
+    print(turnoff_lights(m))
 
 
 if __name__ == "__main__":
+    test_first_row()
     interactive_solver()

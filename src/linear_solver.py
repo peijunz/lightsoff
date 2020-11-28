@@ -84,12 +84,14 @@ def apply_sol(sol, b):
         b       inhomogenous vector term
     Return:
         res     solution vector
-        ortho   General solution
+        ker   General solution
     '''
     ortho, M, ker = sol
     res = np.dot(M, b)
-    if not all(res[ortho] == 0):
+    #print(ortho, repr(M))
+    if any(res[ortho] != 0):
         return None, ker
+    #print(repr(ker.T))
     return res, ker
 
 
